@@ -1,6 +1,5 @@
 //
-//  Node.hpp
-//  A*
+//  node.hpp
 //
 //  Created by Jonathan Appiagyei on 3/15/17.
 //  Copyright © 2017 Jonathan Appiagyei. All rights reserved.
