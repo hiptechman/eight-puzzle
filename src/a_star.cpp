@@ -19,7 +19,7 @@ using namespace std;
 
 namespace a_star {
   
-  void print_state(vector<int> state) {
+  void print_state(vector<int> &state) {
     for (auto i : state) {
       cout << i << ' ';
     }
@@ -31,6 +31,9 @@ namespace a_star {
       heuristic = shared_ptr<HeuristicType> (new HeuristicMisplaced());
     else if (h_func == "manhattan")
       heuristic = shared_ptr<HeuristicType> (new HeuristicManhattan());
+    else
+      throw invalid_argument("Invalid heuristic chosen\n");
+
     init_state = initial_state;
   }
   
@@ -41,10 +44,10 @@ namespace a_star {
     shared_ptr<Node> node(new Node(start_node));
     
     while (node) {
-      if (node->_dir_to_here) {
-        directions += node->_dir_to_here;
+      if (node->dir_to_here) {
+        directions += node->dir_to_here;
       }
-      node = node->_prev_node;
+      node = node->prev_node;
     }
     reverse(directions.begin(), directions.end());
     
@@ -52,48 +55,46 @@ namespace a_star {
   }
   
   void Solver::generate_neighbors(Node &node){
-    vector<int> indices = {-3, -1, 1, 3};
+    enum BoardPositions {
+      mid_left = 3, bottom_left = 6, top_right = 2, mid_right = 5, top_left = 0,
+      bottom_right = 8
+    };
+    vector<Moves> moves_to_try = {up, down, left, right};
     
-    auto blank_iter = find(node._state.begin(), node._state.end(), 0);
-    int blank_index = (int)distance(node._state.begin(), blank_iter);
+    auto blank_iter = find(node.state.begin(), node.state.end(), 0);
+    int blank_index = (int)distance(node.state.begin(), blank_iter);
     
     // checks if moving the blank is legal or not
     // creates new neighbor node if legal
-    for (auto i : indices) {
-      auto new_zero_index = blank_index + i;
+    for (auto move : moves_to_try) {
+      auto new_index = blank_index + move;
       
-      if (i == 1 && (new_zero_index == 3 || new_zero_index == 6))
+      if (move == right && (new_index == mid_left || new_index == bottom_left))
         continue;
-      else if (i == -1 && (new_zero_index == 2 || new_zero_index == 5))
+      else if (move == left && (new_index == top_right || new_index == mid_right))
         continue;
-      else if (new_zero_index < 0 || new_zero_index > 8)
+      else if (new_index < top_left || new_index > bottom_right)
         continue;
       
-      vector<int> neighbor_state = node._state;
-      swap(neighbor_state[blank_index], neighbor_state[new_zero_index]);
+      vector<int> neighbor_state = node.state;
+      swap(neighbor_state[blank_index], neighbor_state[new_index]);
       
       int h_cost = heuristic->compute_cost(neighbor_state);
-      node._neighbors.push_back(Node(neighbor_state, h_cost));
+      node.neighbors.push_back(Node(neighbor_state, h_cost));
     }
   }
+  
   HeuristicType::HeuristicType() {};
   HeuristicType::~HeuristicType() {};
+  
   HeuristicMisplaced::HeuristicMisplaced() : HeuristicType() {};
   HeuristicMisplaced::~HeuristicMisplaced() {};
   
   int HeuristicMisplaced::compute_cost(const vector<int> &state) {
-    vector<int> sorted_state = state;
     int misplaced = 0;
-    auto iter = find(sorted_state.begin(), sorted_state.end(), 0);
-    
-    // removes 0 and adds it to back after sorting
-    // avoids 0 being in the front after sorting
-    sorted_state.erase(iter);
-    sort(sorted_state.begin(), sorted_state.end());
-    sorted_state.push_back(0);
-    
-    for (size_t i = 0; i < sorted_state.size(); ++i) {
-      if ((sorted_state[i] != state[i]) && (state[i] != 0))
+
+    for (size_t i = 0; i < state.size(); ++i) {
+      if (state[i] != i + 1 && state[i] != 0)
         ++misplaced;
     }
     return misplaced;
@@ -103,7 +104,7 @@ namespace a_star {
   HeuristicManhattan::~HeuristicManhattan() {};
   
   int HeuristicManhattan::compute_cost(const vector<int> &state) {
-    int sum = 0;
+    int distance = 0;
     int state_size = (int)state.size();
     
     for(int i = 0; i < state_size; ++i) {
@@ -112,25 +113,40 @@ namespace a_star {
       
       int dx = abs((i % 3) - ((state[i] - 1) % 3));
       int dy = abs((i / 3) - ((state[i] - 1) / 3));
-      sum += dx + dy;
+      distance += dx + dy;
     }
-    return sum;
+    return distance;
   }
   
   size_t a_star::hash_node::operator()(const vector<int> &state) const {
     return hash<string>()(string(state.begin(), state.end()));
   }
   
-  // question marks just used for easier calculations, not valid directions
   char Solver::find_dir(const vector<int> state1, const vector<int> state2) {
-    vector<char> dirs = {'d', '?', 'r', '?', 'l', '?', 'u'};
+    char dir;
     
     int s1_blank = (int)distance(state1.begin(), find(state1.begin(),
                                                       state1.end(), 0));
     int s2_blank = (int)distance(state2.begin(), find(state2.begin(),
                                                       state2.end(), 0));
-    
-    return dirs[s1_blank - s2_blank + 3];
+    // difference between blank piece indices correspond to a direction
+    switch (s2_blank - s1_blank) {
+        case up:
+          dir = 'u';
+          break;
+      case down:
+        dir = 'd';
+        break;
+      case left:
+        dir = 'l';
+        break;
+      case right:
+        dir = 'r';
+        break;
+      default:
+        dir = '?';
+    }
+    return dir;
   }
   
   tuple<string,vector<vector<int>>> Solver::solve() {
@@ -143,22 +159,22 @@ namespace a_star {
     
     Node start_node(init_state, curr_prio);
     
-    start_node._g_val = 0;
-    start_node._f_val = curr_prio;
+    start_node.g_val = 0;
+    start_node.f_val = curr_prio;
     open_set.insert(start_node);
-    open_set_map[start_node._state] = start_node._g_val;
+    open_set_map[start_node.state] = start_node.g_val;
     
     while (!open_set_map.empty()) {
       Node curr_node(*open_set.begin());
       
       open_set.erase(open_set.begin());
-      open_set_map.erase(curr_node._state);
+      open_set_map.erase(curr_node.state);
       
-      closed_set.insert(curr_node._state);
+      closed_set.insert(curr_node.state);
       
-      states_visited.push_back(curr_node._state);
+      states_visited.push_back(curr_node.state);
       
-      if (curr_node._h_val == 0)
+      if (curr_node.h_val == 0)
         return make_tuple(path_to_goal(curr_node), states_visited);
       
       generate_neighbors(curr_node);
@@ -166,30 +182,30 @@ namespace a_star {
       // updates cost values of neighbors if they're in the open set
       // creates and addes neighbors to open_set if not in there already
       // ignores neighbors in the closed set
-      for (auto neighbor : curr_node._neighbors) {
-        if (closed_set.find(neighbor._state) != closed_set.end())
+      for (auto neighbor : curr_node.neighbors) {
+        if (closed_set.find(neighbor.state) != closed_set.end())
           continue;
         
-        int temp_g_score = curr_node._g_val + 1;
+        int temp_g_score = curr_node.g_val + 1;
         
-        if (open_set_map.find(neighbor._state) != open_set_map.end()) {
-          int old_neighbor_g_val = open_set_map[neighbor._state];
+        if (open_set_map.find(neighbor.state) != open_set_map.end()) {
+          int old_neighbor_g_val = open_set_map[neighbor.state];
           
           if (temp_g_score >= old_neighbor_g_val)
             continue;
           else
             open_set.erase(neighbor);
         }
-        else if (temp_g_score > neighbor._g_val)
+        else if (temp_g_score > neighbor.g_val)
           continue;
         
         neighbor.update_cost_vals(temp_g_score);
-        neighbor._prev_node =
+        neighbor.prev_node =
         std::shared_ptr<Node> (new Node(curr_node));
-        neighbor._dir_to_here = find_dir(curr_node._state,
-                                         neighbor._state);
+        neighbor.dir_to_here = find_dir(curr_node.state,
+                                         neighbor.state);
         open_set.insert(neighbor);
-        open_set_map[neighbor._state] = neighbor._g_val;
+        open_set_map[neighbor.state] = neighbor.g_val;
       }
     }
     cout << "No path found" << endl;

@@ -10,50 +10,58 @@
 
 #include "node.hpp"
 
+#include <fstream>
 #include <string>
 #include <tuple>
 #include <vector>
 
 namespace a_star {
+  
   class HeuristicType;
 
-  // hash function for unordered_map and unordered_set
+  // hash function for unordered_map and unordered_set containers
   struct hash_node {
     size_t operator()(const std::vector<int> &state) const;
   };
   
-  void print_state(std::vector<int> state);
-  
+  void print_state(std::vector<int> &state);
   
   class Solver {
   public:
-    Solver(const std::vector<int> &init_state, std::string h_func);
-    
-    // calculates shortest path from initial state to goal state
-    std::tuple<std::string, std::vector<std::vector<int>>>solve();
+    Solver(const std::vector<int> &initial_state, std::string h_func);
     ~Solver();
 
+    // solves 8-puzzle board
+    // calculates shortest path from initial state to goal state using A*
+    // algorithm
+    //
+    // returns string representing the order blank space was moved to arrive at
+    // goal state
+    // returns vector containing all states expanded to arrive at solution
+    std::tuple<std::string, std::vector<std::vector<int>>>solve();
   private:
-//    typedef int (Solver::*heuristic_func)(const std::vector<int> &state);
-  
+    enum Moves {
+      up = -3, down = 3, left = -1, right = 1
+    };
+    
+    std::vector<int> init_state;
+    std::shared_ptr<HeuristicType> heuristic;
+    
     // returns directions from initial state to goal state
-    // directions refer to movement of empty space
+    // directions refer to movement of blank space
     // 'l' = left, 'r' = right, 'u' = up, 'd'= down
     std::string path_to_goal(const Node &node);
     
-//    void set_heuristic(HeuristicType *heuristic);
-    // adds neighboring states of @param node to node's "neighbors" vector
+    // moves node's blank space in all legal directions to generate neighboring
+    // states
+    // generated states added to node's neighbor vector
     void generate_neighbors(Node &node);
   
-    // finds direction needed to get from state1 to state2
+    // returns direction needed to move blank from state1 to state2
     char find_dir(const std::vector<int> state1, const std::vector<int> state2);
-//    heuristic_func heuristic;
-    std::vector<int> init_state;
-    
-    std::shared_ptr<HeuristicType> heuristic;
   };
   
-  // base class for 8-puzzle heuristics
+  // base for family of 8-puzzle heuristics
   class HeuristicType {
   public:
     HeuristicType();
