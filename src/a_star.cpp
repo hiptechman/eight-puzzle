@@ -44,9 +44,9 @@ namespace a_star {
     shared_ptr<Node> node(new Node(start_node));
     
     while (node) {
-      if (node->dir_to_here) {
+      if (node->dir_to_here)
         directions += node->dir_to_here;
-      }
+  
       node = node->prev_node;
     }
     reverse(directions.begin(), directions.end());
@@ -56,10 +56,10 @@ namespace a_star {
   
   void Solver::generate_neighbors(Node &node){
     enum BoardPositions {
-      mid_left = 3, bottom_left = 6, top_right = 2, mid_right = 5, top_left = 0,
-      bottom_right = 8
+      MID_LEFT = 3, BOTTOM_LEFT = 6, TOP_RIGHT = 2, MID_RIGHT = 5, TOP_LEFT = 0,
+      BOTTOM_RIGHT = 8
     };
-    vector<Moves> moves_to_try = {up, down, left, right};
+    vector<Moves> moves_to_try = {UP, DOWN, LEFT, RIGHT};
     
     auto blank_iter = find(node.state.begin(), node.state.end(), 0);
     int blank_index = (int)distance(node.state.begin(), blank_iter);
@@ -69,11 +69,11 @@ namespace a_star {
     for (auto move : moves_to_try) {
       auto new_index = blank_index + move;
       
-      if (move == right && (new_index == mid_left || new_index == bottom_left))
+      if (move == RIGHT && (new_index == MID_LEFT || new_index == BOTTOM_LEFT))
         continue;
-      else if (move == left && (new_index == top_right || new_index == mid_right))
+      else if (move == LEFT && (new_index == TOP_RIGHT || new_index == MID_RIGHT))
         continue;
-      else if (new_index < top_left || new_index > bottom_right)
+      else if (new_index < TOP_LEFT || new_index > BOTTOM_RIGHT)
         continue;
       
       vector<int> neighbor_state = node.state;
@@ -131,16 +131,16 @@ namespace a_star {
                                                       state2.end(), 0));
     // difference between blank piece indices correspond to a direction
     switch (s2_blank - s1_blank) {
-        case up:
-          dir = 'u';
-          break;
-      case down:
+      case UP:
+        dir = 'u';
+        break;
+      case DOWN:
         dir = 'd';
         break;
-      case left:
+      case LEFT:
         dir = 'l';
         break;
-      case right:
+      case RIGHT:
         dir = 'r';
         break;
       default:

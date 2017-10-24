@@ -41,7 +41,7 @@ namespace a_star {
     std::tuple<std::string, std::vector<std::vector<int>>>solve();
   private:
     enum Moves {
-      up = -3, down = 3, left = -1, right = 1
+      UP = -3, DOWN = 3, LEFT = -1, RIGHT = 1
     };
     
     std::vector<int> init_state;
